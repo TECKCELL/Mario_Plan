@@ -3,13 +3,66 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import {createStore,applyMiddleware,compose} from 'redux'
+import rootReducer from './store/reducers/rootReducer'
+import {Provider} from 'react-redux'
+import thunk from 'redux-thunk'
+import {createFirestoreInstance,reduxFirestore,getFirestore} from 'redux-firestore'
+import {getFirebase,ReactReduxFirebaseProvider } from 'react-redux-firebase'
+import fb from './config/fb'
+import firebase from 'firebase/app'
+import { useSelector } from 'react-redux'
+import { isLoaded } from 'react-redux-firebase'
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+
+
+const store =
+  createStore(rootReducer,
+    compose(
+  applyMiddleware(thunk.withExtraArgument({getFirebase,getFirestore})),
+  reduxFirestore(fb)
+      )
+  )
+  const profileSpecificProps = {
+    userProfile: 'users',
+    useFirestoreForProfile: true,
+    updateProfileOnLogin: false,
+  };
+
+  const rrfProps = {
+      firebase,
+      config:profileSpecificProps, fb,
+      dispatch: store.dispatch,
+      createFirestoreInstance, // <- needed if using firestore
+     }
+
+     function AuthIsLoaded({ children }) {
+      const auth = useSelector(state => state.firebase.auth)
+      if (!isLoaded(auth)) return <div>splash screen...</div>;
+      return children
+    }
+
+    
+      ReactDOM.render(
+        <React.StrictMode>
+        <Provider store = {store}>
+        <ReactReduxFirebaseProvider {...rrfProps}>
+        <AuthIsLoaded>
+        <App />
+        </AuthIsLoaded>
+        </ReactReduxFirebaseProvider>
+        
+        </Provider>
+       
+        </React.StrictMode>,
+        document.getElementById('root')
+      );
+
+
+
+     
+
+
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
